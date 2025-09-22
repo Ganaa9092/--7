@@ -1,1 +1,379 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Бутархайн Үйлдэл</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        .container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
+            width: 90%;
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .button {
+            padding: 0.75rem 1.5rem;
+            border-radius: 12px;
+            font-weight: bold;
+            transition: transform 0.1s ease, background-color 0.1s ease;
+            cursor: pointer;
+            box-shadow: 0 0px #9ca3af;
+        }
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px #6b7280;
+        }
+        .button:active {
+            transform: translateY(0px);
+            box-shadow: 0 0px #d1d5db;
+        }
+        .problem-box {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1.5rem;
+            min-height: 80px;
+            flex-wrap: wrap;
+        }
+        .fraction {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 0.5rem;
+            min-width: 50px;
+        }
+        .fraction-numerator {
+            border-bottom: 2px solid #333;
+            padding: 0 0.25rem;
+        }
+        .input-group {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .fraction-input {
+            width: 50px;
+            text-align: center;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            padding: 0.5rem;
+        }
+        #feedback {
+            font-size: 1.25rem;
+            font-weight: bold;
+            min-height: 30px;
+        }
+        .correct { color: #10b981; }
+        .incorrect { color: #ef4444; }
+        .stats {
+            display: flex;
+            justify-content: space-between;
+            width: 100%;
+            font-size: 1rem;
+            font-weight: bold;
+            color: #4a5568;
+        }
+        .ask-section {
+            border-top: 1px solid #d1d5db;
+            padding-top: 1.5rem;
+            margin-top: 1.5rem;
+            text-align: left;
+            width: 100%;
+        }
+        .ask-section textarea {
+            width: 100%;
+            height: 100px;
+            border-radius: 8px;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: #10b981;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div id="app" class="container">
+        <h1 class="text-3xl font-bold text-gray-800">Бутархайг Нэмэх ба Хасах</h1>
+        <p class="text-lg text-gray-600">Хариултаа оруулна уу.</p>
+
+        <div class="stats">
+            <span id="score">Оноо: 0</span>
+            <span id="problem-count">Бодлого: 1/10</span>
+        </div>
+
+        <div class="problem-box" id="problem"></div>
+
+        <div class="input-group">
+            <input type="text" id="numerator-input" class="fraction-input" placeholder="дээд">
+            <span class="text-3xl">/</span>
+            <input type="text" id="denominator-input" class="fraction-input" placeholder="доод">
+        </div>
+
+        <div id="feedback" class="py-2"></div>
+
+        <button onclick="checkAnswer()" class="button bg-blue-500 text-white hover:bg-blue-600" id="check-btn">Шалгах</button>
+        <button onclick="nextProblem()" class="button bg-green-500 text-white hover:bg-green-600 hidden" id="next-btn">Дараагийн Бодлого</button>
+
+        <div class="ask-section">
+            <h2 class="text-2xl font-bold mb-4">Асуулт асуух</h2>
+            <p class="text-sm text-gray-500 mb-4">Бутархайн талаар асуух зүйл байвал энд бичнэ үү. Жишээ нь: "Бутархай гэж юу вэ?" эсвэл "Яагаад ижил хуваарьтай болгодог вэ?".</p>
+            <textarea id="question-input" placeholder="Асуултаа энд бичнэ үү..."></textarea>
+            <div class="flex items-center justify-between mt-4">
+                <button onclick="askQuestion()" class="button bg-gray-500 text-white hover:bg-gray-600" id="ask-btn">Асуух</button>
+                <div id="loading" class="spinner hidden"></div>
+            </div>
+            <div id="response" class="mt-4 p-4 bg-gray-100 rounded-lg text-left" style="min-height: 50px;"></div>
+        </div>
+    </div>
+
+    <script>
+        const problemDiv = document.getElementById('problem');
+        const numeratorInput = document.getElementById('numerator-input');
+        const denominatorInput = document.getElementById('denominator-input');
+        const feedbackDiv = document.getElementById('feedback');
+        const checkBtn = document.getElementById('check-btn');
+        const nextBtn = document.getElementById('next-btn');
+        const scoreSpan = document.getElementById('score');
+        const problemCountSpan = document.getElementById('problem-count');
+        const questionInput = document.getElementById('question-input');
+        const askBtn = document.getElementById('ask-btn');
+        const loadingDiv = document.getElementById('loading');
+        const responseDiv = document.getElementById('response');
+
+        let currentProblem;
+        let currentScore = 0;
+        let currentProblemIndex = 1;
+        const totalProblems = 10;
+
+        const gcd = (a, b) => {
+            a = Math.abs(a);
+            b = Math.abs(b);
+            if (b === 0) return a;
+            return gcd(b, a % b);
+        };
+
+        const lcm = (a, b) => {
+            return (a * b) / gcd(a, b);
+        };
+
+        function generateProblem() {
+            let problemFractions = [];
+            let problemOperators = [];
+
+            for (let i = 0; i < 3; i++) {
+                let den = Math.floor(Math.random() * 5) + 2;
+                let num = Math.floor(Math.random() * (den - 1)) + 1;
+                problemFractions.push({ num, den });
+            }
+
+            for (let i = 0; i < 2; i++) {
+                problemOperators.push(Math.random() > 0.5 ? '+' : '-');
+            }
+
+            const commonDenominator = lcm(lcm(problemFractions[0].den, problemFractions[1].den), problemFractions[2].den);
+
+            let resultNumerator = 0;
+            let resultDenominator = commonDenominator;
+
+            const adjustedNum1 = problemFractions[0].num * (commonDenominator / problemFractions[0].den);
+            const adjustedNum2 = problemFractions[1].num * (commonDenominator / problemFractions[1].den);
+            const adjustedNum3 = problemFractions[2].num * (commonDenominator / problemFractions[2].den);
+            
+            let intermediateResult;
+            if (problemOperators[0] === '+') {
+                intermediateResult = adjustedNum1 + adjustedNum2;
+            } else {
+                intermediateResult = adjustedNum1 - adjustedNum2;
+            }
+            
+            if (problemOperators[1] === '+') {
+                resultNumerator = intermediateResult + adjustedNum3;
+            } else {
+                resultNumerator = intermediateResult - adjustedNum3;
+            }
+
+            if (resultNumerator < 0) {
+                generateProblem();
+                return;
+            }
+
+            const commonDivisor = gcd(resultNumerator, resultDenominator);
+            const simplifiedNum = resultNumerator / commonDivisor;
+            const simplifiedDen = resultDenominator / commonDivisor;
+
+            currentProblem = {
+                fractions: problemFractions,
+                operators: problemOperators,
+                answerNum: simplifiedNum,
+                answerDen: simplifiedDen
+            };
+
+            console.log("Бодлого:", currentProblem);
+            renderProblem();
+        }
+
+        function renderProblem() {
+            const { fractions, operators } = currentProblem;
+            problemDiv.innerHTML = `
+                <div class="fraction">
+                    <span class="fraction-numerator">${fractions[0].num}</span>
+                    <span class="fraction-denominator">${fractions[0].den}</span>
+                </div>
+                <span class="text-3xl">${operators[0]}</span>
+                <div class="fraction">
+                    <span class="fraction-numerator">${fractions[1].num}</span>
+                    <span class="fraction-denominator">${fractions[1].den}</span>
+                </div>
+                <span class="text-3xl">${operators[1]}</span>
+                <div class="fraction">
+                    <span class="fraction-numerator">${fractions[2].num}</span>
+                    <span class="fraction-denominator">${fractions[2].den}</span>
+                </div>
+                <span class="text-3xl">= ?</span>
+            `;
+            feedbackDiv.textContent = '';
+            numeratorInput.value = '';
+            denominatorInput.value = '';
+            checkBtn.classList.remove('hidden');
+            nextBtn.classList.add('hidden');
+            numeratorInput.disabled = false;
+            denominatorInput.disabled = false;
+        }
+
+        function checkAnswer() {
+            const userNum = parseInt(numeratorInput.value);
+            const userDen = parseInt(denominatorInput.value);
+
+            if (isNaN(userNum) || isNaN(userDen) || userDen === 0) {
+                feedbackDiv.textContent = 'Зөвхөн тоогоор хариултаа оруулна уу.';
+                feedbackDiv.className = 'incorrect';
+                return;
+            }
+
+            const userSimplifiedNum = userNum / gcd(userNum, userDen);
+            const userSimplifiedDen = userDen / gcd(userNum, userDen);
+
+            if (userSimplifiedNum === currentProblem.answerNum && userSimplifiedDen === currentProblem.answerDen) {
+                feedbackDiv.textContent = 'Зөв! Мундаг байна!';
+                feedbackDiv.className = 'correct';
+                currentScore++;
+                scoreSpan.textContent = `Оноо: ${currentScore}`;
+            } else {
+                feedbackDiv.textContent = 'Буруу байна. Дахин оролдоорой.';
+                feedbackDiv.className = 'incorrect';
+            }
+            
+            checkBtn.classList.add('hidden');
+            nextBtn.classList.remove('hidden');
+            numeratorInput.disabled = true;
+            denominatorInput.disabled = true;
+        }
+
+        function nextProblem() {
+            if (currentProblemIndex < totalProblems) {
+                currentProblemIndex++;
+                problemCountSpan.textContent = `Бодлого: ${currentProblemIndex}/${totalProblems}`;
+                generateProblem();
+            } else {
+                showFinalScore();
+            }
+        }
+
+        function showFinalScore() {
+            problemDiv.innerHTML = `<h2 class="text-3xl font-bold">Таны оноо: ${currentScore}/${totalProblems}</h2>`;
+            feedbackDiv.textContent = 'Баяр хүргэе! Та амжилттай дуусгалаа.';
+            checkBtn.classList.add('hidden');
+            nextBtn.textContent = 'Дахин эхлэх';
+            nextBtn.onclick = restartGame;
+            nextBtn.classList.remove('hidden');
+        }
+
+        function restartGame() {
+            currentScore = 0;
+            currentProblemIndex = 1;
+            scoreSpan.textContent = `Оноо: ${currentScore}`;
+            problemCountSpan.textContent = `Бодлого: ${currentProblemIndex}/${totalProblems}`;
+            nextBtn.textContent = 'Дараагийн Бодлого';
+            nextBtn.onclick = nextProblem;
+            generateProblem();
+        }
+
+        // Асуулт асуух хэсгийн функц
+        async function askQuestion() {
+            const userQuery = questionInput.value.trim();
+            if (userQuery === '') return;
+
+            responseDiv.textContent = '';
+            askBtn.disabled = true;
+            loadingDiv.classList.remove('hidden');
+
+            const systemPrompt = "Та бутархайн багш шиг аашилна уу. Хүүхдүүдийн асуултад хялбар, ойлгомжтойгоор хариулна уу. Зөвхөн Монгол хэлээр хариулт өгнө үү.";
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${apiKey}`;
+
+            const payload = {
+                contents: [{ parts: [{ text: userQuery }] }],
+                systemInstruction: {
+                    parts: [{ text: systemPrompt }]
+                }
+            };
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const result = await response.json();
+                const text = result?.candidates?.[0]?.content?.parts?.[0]?.text || "Уучлаарай, хариулт өгөх боломжгүй байна.";
+                responseDiv.textContent = text;
+            } catch (error) {
+                console.error("Error asking question:", error);
+                responseDiv.textContent = "Асуулт илгээхэд алдаа гарлаа. Дахин оролдоно уу.";
+            } finally {
+                askBtn.disabled = false;
+                loadingDiv.classList.add('hidden');
+            }
+        }
+
+        // Эхлүүлэх
+        generateProblem();
+    </script>
+</body>
+</html>
 
